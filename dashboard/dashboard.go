@@ -16,6 +16,7 @@ type Dashboard struct {
 func NewDashboard(addresses []string) *Dashboard {
 
 	app := tview.NewApplication()
+	// Create the layout.
 
 	table := tview.NewTable()
 	table.SetBorders(false)
@@ -50,8 +51,15 @@ func NewDashboard(addresses []string) *Dashboard {
 		}
 	}()
 
-	app.SetRoot(table, true)
+	header := tview.NewBox().SetTitle("Header").SetBorder(true)
+	flex := tview.NewFlex().
+		AddItem(header, 0, 1, false).
+		AddItem(table, 0, 1, false).
+		AddItem(tview.NewBox().SetTitle("Footer"), 0, 3, false)
 
+	flex.SetDirection(tview.FlexRow)
+
+	app.SetRoot(flex, true)
 	return &Dashboard{
 		app: app,
 	}
