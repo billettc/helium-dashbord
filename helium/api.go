@@ -46,7 +46,7 @@ func GetHotspot(ctx context.Context, address string, callback func(hotspot *Hots
 
 		url := fmt.Sprintf("https://api.helium.io/v1/hotspots/%s", address)
 
-		var response *HotspotResponse
+		response := new(HotspotResponse)
 		err := getJson(url, &response)
 
 		callback(response.Hotspot, err)
@@ -59,6 +59,10 @@ func getJson(url string, target interface{}) error {
 		return fmt.Errorf("http get: %s: %w", url, err)
 	}
 	defer r.Body.Close()
+
+	if r.StatusCode != http.StatusOK {
+		return fmt.Errorf("http client %d: %s for %v", r.StatusCode, r.Status, url)
+	}
 
 	return json.NewDecoder(r.Body).Decode(target)
 }

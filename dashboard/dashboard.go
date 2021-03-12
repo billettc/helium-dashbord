@@ -17,6 +17,7 @@ type Dashboard struct {
 
 	addresses []string
 	table     *tview.Table
+	footer    *tview.Box
 	lock      sync.Mutex
 
 	rows         map[string]int
@@ -36,10 +37,11 @@ const (
 
 func NewDashboard(addresses []string) *Dashboard {
 	dashboard := &Dashboard{
-		addresses: addresses,
-		rewards:   map[string]*helium.Rewards{},
-		hotspots:  map[string]*helium.Hotspot{},
-		rows:      map[string]int{},
+		addresses:    addresses,
+		addressAtRow: map[int]string{},
+		rewards:      map[string]*helium.Rewards{},
+		hotspots:     map[string]*helium.Hotspot{},
+		rows:         map[string]int{},
 	}
 
 	dashboard.app = tview.NewApplication()
@@ -103,10 +105,10 @@ func NewDashboard(addresses []string) *Dashboard {
 	header.AddItem(tview.NewTextView().SetText(logo).SetTextAlign(tview.AlignRight), 0, 1, false)
 
 	table.SetBorder(true).SetBorderPadding(1, 1, 1, 1)
-	footer := tview.NewFlex().SetBorder(false)
+	dashboard.footer = tview.NewFlex().SetBorder(false)
 	flex.AddItem(header, 0, 1, false)
 	flex.AddItem(table, 0, 4, false).SetBorder(true)
-	flex.AddItem(footer, 0, 1, false)
+	flex.AddItem(dashboard.footer, 0, 1, false)
 
 	flex.SetDirection(tview.FlexRow)
 	flex.SetBorder(false)
@@ -144,9 +146,22 @@ func (d *Dashboard) Run() error {
 }
 
 func (d *Dashboard) hotspotChange(address string) {
-	hotspot := d.hotspots[address]
+	d.lock.Lock()
+	defer d.lock.Unlock()
+
+	hotspot, ok := d.hotspots[address]
+	if !ok {
+		return //
+	}
+
 	rewards := d.rewards[address]
-	row := d.rows[address]
+	row, ok := d.rows[address]
+	if !ok {
+		row = d.table.GetRowCount()
+		d.rows[address] = row
+		d.addressAtRow[row] = address
+	}
+
 	d.app.QueueUpdateDraw(func() {
 		d.table.SetCell(row, columnHotpotName, tview.NewTableCell(hotspot.Name).SetTextColor(tcell.ColorWhite).SetAlign(tview.AlignLeft))
 		d.table.SetCell(row, columnHotspotAddress, tview.NewTableCell(address).SetTextColor(tcell.ColorWhite).SetAlign(tview.AlignLeft))
@@ -163,10 +178,12 @@ func (d *Dashboard) hotspotChange(address string) {
 	})
 }
 
+func (d *Dashboard) displayError(err error) {
+	// do something
+}
+
 func (d *Dashboard) loadData(ctx context.Context) error {
-	for i, address := range d.addresses {
-		d.rows[address] = i + 1
-		d.hotspots[address] = &helium.Hotspot{}
+	for _, address := range d.addresses {
 		d.rewards[address] = &helium.Rewards{
 			Day1:  &helium.Reward{},
 			Day7:  &helium.Reward{},
@@ -176,7 +193,8 @@ func (d *Dashboard) loadData(ctx context.Context) error {
 		go func(address string) {
 			helium.GetHotspot(ctx, address, func(h *helium.Hotspot, err error) {
 				if err != nil {
-					panic(fmt.Errorf("get hotspot: %w", err))
+					d.displayError(err)
+					return
 				}
 				d.hotspots[address] = h
 				d.hotspotChange(address)
@@ -186,7 +204,8 @@ func (d *Dashboard) loadData(ctx context.Context) error {
 		go func(address string) {
 			helium.GetReward(ctx, address, -1, func(reward *helium.Reward, err error) {
 				if err != nil {
-					panic(fmt.Errorf("reward 24h: %s: %w", address, err))
+					d.displayError(err)
+					return
 				}
 				d.rewards[address].Day1 = reward
 				d.hotspotChange(address)
@@ -196,7 +215,8 @@ func (d *Dashboard) loadData(ctx context.Context) error {
 		go func(address string) {
 			helium.GetReward(ctx, address, -7, func(reward *helium.Reward, err error) {
 				if err != nil {
-					panic(fmt.Errorf("reward 7d: %s: %w", address, err))
+					d.displayError(err)
+					return
 				}
 				d.rewards[address].Day7 = reward
 				d.hotspotChange(address)
@@ -206,7 +226,8 @@ func (d *Dashboard) loadData(ctx context.Context) error {
 		go func(address string) {
 			helium.GetReward(ctx, address, -30, func(reward *helium.Reward, err error) {
 				if err != nil {
-					panic(fmt.Errorf("reward 30d: %s: %w", address, err))
+					d.displayError(err)
+					return
 				}
 				d.rewards[address].Day30 = reward
 				d.hotspotChange(address)
