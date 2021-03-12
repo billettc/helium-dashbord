@@ -19,9 +19,10 @@ type Dashboard struct {
 	table     *tview.Table
 	lock      sync.Mutex
 
-	rows     map[string]int
-	hotspots map[string]*helium.Hotspot
-	rewards  map[string]*helium.Rewards
+	rows         map[string]int
+	addressAtRow map[int]string
+	hotspots     map[string]*helium.Hotspot
+	rewards      map[string]*helium.Rewards
 }
 
 const (
@@ -34,21 +35,36 @@ const (
 )
 
 func NewDashboard(addresses []string) *Dashboard {
-	app := tview.NewApplication()
+	dashboard := &Dashboard{
+		addresses: addresses,
+		rewards:   map[string]*helium.Rewards{},
+		hotspots:  map[string]*helium.Hotspot{},
+		rows:      map[string]int{},
+	}
+
+	dashboard.app = tview.NewApplication()
+
 	flex := tview.NewFlex()
 	pages := tview.NewPages().
 		AddPage("main", flex, true, true)
 
 	// Create the layout.
 	table := tview.NewTable()
+	dashboard.table = table
+
 	table.SetBorders(false)
 	table.SetSelectable(true, false)
 
 	table.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
+		if row, _ := table.GetSelection(); row < 1 {
+			return event
+		}
+
+		//hotspot := dashboard.hotspots[dashboard]
 		if event.Rune() == 'i' {
 			box := tview.NewBox().
 				SetBorder(true).
-				SetTitle("Centered Box")
+				SetTitle("BOXO")
 
 			box.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
 				if event.Key() == tcell.KeyEsc {
@@ -57,7 +73,7 @@ func NewDashboard(addresses []string) *Dashboard {
 				return event
 			})
 
-			app.SetFocus(box)
+			dashboard.app.SetFocus(box)
 			pages.AddPage("modal", modal(box, 40, 10), true, true)
 		}
 		return event
@@ -72,7 +88,7 @@ func NewDashboard(addresses []string) *Dashboard {
 
 	table.Select(0, 0).SetFixed(1, 1).SetDoneFunc(func(key tcell.Key) {
 		if key == tcell.KeyEscape {
-			app.Stop()
+			dashboard.app.Stop()
 		}
 		if key == tcell.KeyEnter {
 			table.SetSelectable(true, true)
@@ -83,7 +99,7 @@ func NewDashboard(addresses []string) *Dashboard {
 	})
 
 	header := tview.NewFlex()
-	header.AddItem(buildMenu(app), 0, 4, false)
+	header.AddItem(buildMenu(dashboard.app), 0, 4, false)
 	header.AddItem(tview.NewTextView().SetText(logo).SetTextAlign(tview.AlignRight), 0, 1, false)
 
 	table.SetBorder(true).SetBorderPadding(1, 1, 1, 1)
@@ -95,16 +111,9 @@ func NewDashboard(addresses []string) *Dashboard {
 	flex.SetDirection(tview.FlexRow)
 	flex.SetBorder(false)
 
-	app.SetRoot(pages, true).SetFocus(table)
-	return &Dashboard{
-		app: app,
+	dashboard.app.SetRoot(pages, true).SetFocus(table)
 
-		addresses: addresses,
-		table:     table,
-		rewards:   map[string]*helium.Rewards{},
-		hotspots:  map[string]*helium.Hotspot{},
-		rows:      map[string]int{},
-	}
+	return dashboard
 }
 
 func modal(p tview.Primitive, width, height int) tview.Primitive {
