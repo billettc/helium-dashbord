@@ -3,12 +3,13 @@ package dashboard
 import (
 	"context"
 	"fmt"
-	"time"
 
 	"github.com/billettc/helium-dashbord/helium"
 	"github.com/gdamore/tcell/v2"
 	"github.com/rivo/tview"
 )
+
+var logo = ",--.  ,--.,------.   \n|  '--'  ||  .-.  \\  \n|  .--.  ||  |  \\  : \n|  |  |  ||  '--'  / \n`--'  `--'`-------'  "
 
 type Dashboard struct {
 	app *tview.Application
@@ -50,29 +51,39 @@ func NewDashboard(addresses []string) *Dashboard {
 	})
 
 	go func() {
-		for {
-			app.QueueUpdateDraw(func() {
-				if err := loadData(context.TODO(), addresses, table); err != nil {
-					panic(err)
-				}
-			})
-			time.Sleep(60 * time.Second)
+		if err := loadData(context.TODO(), addresses, table); err != nil {
+			panic(err)
 		}
 	}()
 
-	header := tview.NewBox().SetTitle("Header").SetBorder(true)
+	header := tview.NewFlex()
+	menu := buildMenu(app)
+	header.AddItem(menu, 0, 3, true)
+	header.AddItem(tview.NewTextView().SetText(logo).SetTextAlign(tview.AlignRight), 0, 1, false)
 
+	table.SetBorder(true).SetBorderPadding(1, 1, 1, 1)
+	footer := tview.NewFlex().SetBorder(false)
 	flex := tview.NewFlex()
 	flex.AddItem(header, 0, 1, false)
 	flex.AddItem(table, 0, 3, false).SetBorder(true)
-	flex.AddItem(tview.NewBox().SetTitle("Footer").SetBorder(true), 0, 1, false)
+	flex.AddItem(footer, 0, 1, false)
 
 	flex.SetDirection(tview.FlexRow)
+	flex.SetBorder(false)
 
-	app.SetRoot(flex, true)
+	app.SetRoot(flex, true).SetFocus(menu)
 	return &Dashboard{
 		app: app,
 	}
+}
+
+func buildMenu(app *tview.Application) *tview.List {
+	return tview.NewList().
+		AddItem("List item 1", "Some explanatory text", 'a', nil).
+		AddItem("List item 2", "Some explanatory text", 'b', nil).
+		AddItem("Quit", "Press to exit", 'q', func() {
+			app.Stop()
+		})
 }
 
 func (d *Dashboard) Run() error {
