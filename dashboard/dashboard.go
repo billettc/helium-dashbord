@@ -17,7 +17,7 @@ type Dashboard struct {
 
 	addresses []string
 	table     *tview.Table
-	footer    *tview.Box
+	footer    *tview.Flex
 	lock      sync.Mutex
 
 	rows         map[string]int
@@ -59,7 +59,8 @@ func NewDashboard(addresses []string) *Dashboard {
 	header.AddItem(tview.NewTextView().SetText(logo).SetTextAlign(tview.AlignRight), 0, 1, false)
 
 	dashboard.table.SetBorder(true).SetBorderPadding(1, 1, 1, 1)
-	dashboard.footer = tview.NewFlex().SetBorder(false)
+	dashboard.footer = tview.NewFlex()
+	dashboard.footer.SetBorder(false)
 	flex.AddItem(header, 0, 1, false)
 	flex.AddItem(dashboard.table, 0, 4, false).SetBorder(true)
 	flex.AddItem(dashboard.footer, 0, 1, false)
@@ -186,11 +187,13 @@ func (d *Dashboard) hotspotChange(address string) {
 }
 
 func (d *Dashboard) displayError(err error) {
-	// do something
+	d.footer.AddItem(tview.NewTextView().SetText(err.Error()).SetTextAlign(tview.AlignCenter), 0, 1, false)
 }
 
 func (d *Dashboard) loadData(ctx context.Context) error {
 	for _, address := range d.addresses {
+		ctx, cancel := context.WithCancel(ctx)
+
 		d.rewards[address] = &helium.Rewards{
 			Day1:  &helium.Reward{},
 			Day7:  &helium.Reward{},
@@ -201,6 +204,7 @@ func (d *Dashboard) loadData(ctx context.Context) error {
 			helium.GetHotspot(ctx, address, func(h *helium.Hotspot, err error) {
 				if err != nil {
 					d.displayError(err)
+					cancel()
 					return
 				}
 				d.hotspots[address] = h
