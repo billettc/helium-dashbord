@@ -11,7 +11,7 @@ import (
 var httpClient = &http.Client{Timeout: 10 * time.Second}
 
 func GetReward(ctx context.Context, address string, days int, callback func(*Reward, error)) {
-	ticker := time.NewTicker(10 * time.Second)
+	ticker := time.NewTicker(1 * time.Minute)
 	defer ticker.Stop()
 
 	for c := ticker; ; <-c.C {
