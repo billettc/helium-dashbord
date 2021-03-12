@@ -19,7 +19,7 @@ func main() {
 	table := tview.NewTable()
 	table.SetBorders(true)
 
-	table.SetCell(0, 0, tview.NewTableCell("HotspotResponse Name").SetTextColor(tcell.ColorYellow).SetAlign(tview.AlignCenter))
+	table.SetCell(0, 0, tview.NewTableCell("Hotspot Name").SetTextColor(tcell.ColorYellow).SetAlign(tview.AlignCenter))
 	table.SetCell(0, 1, tview.NewTableCell("last 24h").SetTextColor(tcell.ColorYellow).SetAlign(tview.AlignCenter))
 	table.SetCell(0, 2, tview.NewTableCell("last 7 days").SetTextColor(tcell.ColorYellow).SetAlign(tview.AlignCenter))
 	table.SetCell(0, 3, tview.NewTableCell("last 30 days").SetTextColor(tcell.ColorYellow).SetAlign(tview.AlignCenter))
@@ -27,10 +27,6 @@ func main() {
 	table.SetCell(0, 5, tview.NewTableCell("Owner").SetTextColor(tcell.ColorYellow).SetAlign(tview.AlignCenter))
 
 	addresses := os.Args[1:]
-
-	if err := refresh(addresses, table); err != nil {
-		panic(err)
-	}
 
 	table.Select(0, 0).SetFixed(1, 1).SetDoneFunc(func(key tcell.Key) {
 		if key == tcell.KeyEscape {
@@ -43,7 +39,20 @@ func main() {
 		table.GetCell(row, column).SetTextColor(tcell.ColorRed)
 		table.SetSelectable(false, false)
 	})
-	if err := app.SetRoot(table, true).EnableMouse(true).Run(); err != nil {
+
+	go func() {
+		for {
+			app.QueueUpdateDraw(func() {
+				if err := refresh(addresses, table); err != nil {
+					panic(err)
+				}
+			})
+			time.Sleep(30 * time.Second)
+		}
+	}()
+
+	app.SetRoot(table, true).EnableMouse(true)
+	if err := app.Run(); err != nil {
 		panic(err)
 	}
 }
@@ -79,7 +88,6 @@ func refresh(addresses []string, table *tview.Table) error {
 
 		table.SetCell(row, 4, tview.NewTableCell(h.Address).SetTextColor(tcell.ColorWhite).SetAlign(tview.AlignLeft))
 		table.SetCell(row, 5, tview.NewTableCell(h.Address).SetTextColor(tcell.ColorWhite).SetAlign(tview.AlignLeft))
-
 	}
 
 	return nil
