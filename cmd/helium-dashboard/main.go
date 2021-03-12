@@ -8,7 +8,6 @@ import (
 )
 
 func main() {
-
 	addresses := os.Args[1:]
 
 	d := dashboard.NewDashboard(addresses)

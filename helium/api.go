@@ -1,38 +1,60 @@
 package helium
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"net/http"
 	"time"
 )
 
-var webClient = &http.Client{Timeout: 10 * time.Second}
+var httpClient = &http.Client{Timeout: 10 * time.Second}
 
-func GetReward(adress string, max time.Time, min time.Time) (*RewardResponse, error) {
-	url := fmt.Sprintf("https://api.helium.io/v1/hotspots/%s/rewards/sum?max_time=%s&min_time=%s", adress, max.Format("2006-01-02T15:04:05-0700"), min.Format("2006-01-02T15:04:05-0700"))
-	var response *RewardResponse
+func GetReward(ctx context.Context, address string, days int, callback func(*Reward, error)) {
+	ticker := time.NewTicker(1 * time.Minute)
+	defer ticker.Stop()
 
-	if err := getJson(url, &response); err != nil {
-		return nil, fmt.Errorf("get json: %w", err)
+	for c := ticker; ; <-c.C {
+		select {
+		case <-ctx.Done():
+			return
+		default:
+		}
+
+		max := time.Now()
+		min := time.Now().AddDate(0, 0, days)
+
+		url := fmt.Sprintf("https://api.helium.io/v1/hotspots/%s/rewards/sum?max_time=%s&min_time=%s", address, max.Format("2006-01-02T15:04:05-0700"), min.Format("2006-01-02T15:04:05-0700"))
+
+		var response *RewardResponse
+		err := getJson(url, &response)
+
+		callback(response.Reward, err)
 	}
-
-	return response, nil
 }
 
-func GetHotspot(address string) (*HotspotResponse, error) {
-	url := fmt.Sprintf("https://api.helium.io/v1/hotspots/%s", address)
-	var response *HotspotResponse
+func GetHotspot(ctx context.Context, address string, callback func(hotspot *Hotspot, err error)) {
+	ticker := time.NewTicker(1 * time.Minute)
+	defer ticker.Stop()
 
-	if err := getJson(url, &response); err != nil {
-		return nil, fmt.Errorf("get json: %w", err)
+	for c := ticker; ; <-c.C {
+		select {
+		case <-ctx.Done():
+			return
+		default:
+		}
+
+		url := fmt.Sprintf("https://api.helium.io/v1/hotspots/%s", address)
+
+		var response *HotspotResponse
+		err := getJson(url, &response)
+
+		callback(response.Hotspot, err)
 	}
-
-	return response, nil
 }
 
 func getJson(url string, target interface{}) error {
-	r, err := webClient.Get(url)
+	r, err := httpClient.Get(url)
 	if err != nil {
 		return fmt.Errorf("http get: %s: %w", url, err)
 	}

@@ -43,13 +43,15 @@ type RewardResponse struct {
 		MinTime time.Time `json:"min_time"`
 		MaxTime time.Time `json:"max_time"`
 	} `json:"meta"`
-	Data struct {
-		Total  float64 `json:"total"`
-		Sum    int     `json:"sum"`
-		Stddev float64 `json:"stddev"`
-		Min    float64 `json:"min"`
-		Median float64 `json:"median"`
-		Max    float64 `json:"max"`
-		Avg    float64 `json:"avg"`
-	} `json:"data"`
+	Reward *Reward `json:"data"`
+}
+
+type Reward struct {
+	Total  float64 `json:"total"`
+	Sum    int     `json:"sum"`
+	Stddev float64 `json:"stddev"`
+	Min    float64 `json:"min"`
+	Median float64 `json:"median"`
+	Max    float64 `json:"max"`
+	Avg    float64 `json:"avg"`
 }
