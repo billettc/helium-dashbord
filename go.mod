@@ -1,4 +1,4 @@
-module helium-dashboard
+module github.com/billettc/helium-dashbord
 
 go 1.15
 
