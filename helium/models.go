@@ -38,6 +38,12 @@ type Hotspot struct {
 	Address    string `json:"address"`
 }
 
+type Rewards struct {
+	Day1  *Reward
+	Day7  *Reward
+	Day30 *Reward
+}
+
 type RewardResponse struct {
 	Meta struct {
 		MinTime time.Time `json:"min_time"`

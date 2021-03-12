@@ -3,6 +3,7 @@ package dashboard
 import (
 	"context"
 	"fmt"
+	"sync"
 
 	"github.com/billettc/helium-dashbord/helium"
 	"github.com/gdamore/tcell/v2"
@@ -16,6 +17,11 @@ type Dashboard struct {
 
 	addresses []string
 	table     *tview.Table
+	lock      sync.Mutex
+
+	rows     map[string]int
+	hotspots map[string]*helium.Hotspot
+	rewards  map[string]*helium.Rewards
 }
 
 const (
@@ -58,7 +64,9 @@ func NewDashboard(addresses []string) *Dashboard {
 		table.SetSelectable(false, false)
 	})
 
-	header := tview.NewBox().SetTitle("Header").SetBorder(true)
+	header := tview.NewFlex()
+	header.AddItem(buildMenu(app), 0, 4, false)
+	header.AddItem(tview.NewTextView().SetText(logo), 0, 4, false)
 
 	table.SetBorder(true).SetBorderPadding(1, 1, 1, 1)
 	footer := tview.NewFlex().SetBorder(false)
@@ -76,6 +84,9 @@ func NewDashboard(addresses []string) *Dashboard {
 
 		addresses: addresses,
 		table:     table,
+		rewards:   map[string]*helium.Rewards{},
+		hotspots:  map[string]*helium.Hotspot{},
+		rows:      map[string]int{},
 	}
 }
 
@@ -96,58 +107,81 @@ func (d *Dashboard) Run() error {
 	return d.app.Run()
 }
 
+func (d *Dashboard) hotspotChange(address string) {
+	d.lock.Lock()
+	defer d.lock.Unlock()
+
+	hotspot := d.hotspots[address]
+	rewards := d.rewards[address]
+	row := d.rows[hotspot.Address]
+	d.app.QueueUpdateDraw(func() {
+		d.table.SetCell(row, columnHotpotName, tview.NewTableCell(hotspot.Name).SetTextColor(tcell.ColorWhite).SetAlign(tview.AlignLeft))
+		d.table.SetCell(row, columnHotspotAddress, tview.NewTableCell(address).SetTextColor(tcell.ColorWhite).SetAlign(tview.AlignLeft))
+		d.table.SetCell(row, columnHotspotOwner, tview.NewTableCell(hotspot.Owner).SetTextColor(tcell.ColorWhite).SetAlign(tview.AlignLeft))
+
+		cell := tview.NewTableCell(fmt.Sprintf("%f", rewards.Day1.Total)).SetTextColor(tcell.ColorWhite).SetAlign(tview.AlignRight)
+		d.table.SetCell(row, columnLast24h, cell)
+
+		cell = tview.NewTableCell(fmt.Sprintf("%f", rewards.Day7.Total)).SetTextColor(tcell.ColorWhite).SetAlign(tview.AlignRight)
+		d.table.SetCell(row, columnLast7d, cell)
+
+		cell = tview.NewTableCell(fmt.Sprintf("%f", rewards.Day30.Total)).SetTextColor(tcell.ColorWhite).SetAlign(tview.AlignRight)
+		d.table.SetCell(row, columnlast30d, cell)
+
+	})
+
+}
+
 func (d *Dashboard) loadData(ctx context.Context) error {
+
 	for i, address := range d.addresses {
-		row := i + 1
+		d.rows[address] = i + 1
+		d.hotspots[address] = &helium.Hotspot{}
+		d.rewards[address] = &helium.Rewards{
+			Day1:  &helium.Reward{},
+			Day7:  &helium.Reward{},
+			Day30: &helium.Reward{},
+		}
 
-		go func(row int, address string) {
-			d.app.QueueUpdateDraw(func() {
-				helium.GetHotspot(ctx, address, func(h *helium.Hotspot, err error) {
-					if err != nil {
-						panic(fmt.Errorf("get hotspot: %w", err))
-					}
-					d.table.SetCell(row, columnHotpotName, tview.NewTableCell(h.Name).SetTextColor(tcell.ColorWhite).SetAlign(tview.AlignLeft))
-					d.table.SetCell(row, columnHotspotAddress, tview.NewTableCell(h.Address).SetTextColor(tcell.ColorWhite).SetAlign(tview.AlignLeft))
-					d.table.SetCell(row, columnHotspotOwner, tview.NewTableCell(h.Owner).SetTextColor(tcell.ColorWhite).SetAlign(tview.AlignLeft))
-				})
+		go func(address string) {
+			helium.GetHotspot(ctx, address, func(h *helium.Hotspot, err error) {
+				if err != nil {
+					panic(fmt.Errorf("get hotspot: %w", err))
+				}
+				d.hotspots[address] = h
+				d.hotspotChange(address)
 			})
-		}(row, address)
+		}(address)
 
-		go func(row int, address string) {
-			d.app.QueueUpdate(func() {
-				helium.GetReward(ctx, address, -1, func(reward *helium.Reward, err error) {
-					if err != nil {
-						panic(fmt.Errorf("reward 24h: %s: %w", address, err))
-					}
-					cell := tview.NewTableCell(fmt.Sprintf("%f", reward.Total)).SetTextColor(tcell.ColorWhite).SetAlign(tview.AlignRight)
-					d.table.SetCell(row, columnLast24h, cell)
-				})
+		go func(address string) {
+			helium.GetReward(ctx, address, -1, func(reward *helium.Reward, err error) {
+				if err != nil {
+					panic(fmt.Errorf("reward 24h: %s: %w", address, err))
+				}
+				d.rewards[address].Day1 = reward
+				d.hotspotChange(address)
 			})
-		}(row, address)
+		}(address)
 
-		go func(row int, address string) {
-			d.app.QueueUpdate(func() {
-				helium.GetReward(ctx, address, -7, func(reward *helium.Reward, err error) {
-					if err != nil {
-						panic(fmt.Errorf("reward 7d: %s: %w", address, err))
-					}
-					cell := tview.NewTableCell(fmt.Sprintf("%f", reward.Total)).SetTextColor(tcell.ColorWhite).SetAlign(tview.AlignRight)
-					d.table.SetCell(row, columnLast7d, cell)
-				})
+		go func(address string) {
+			helium.GetReward(ctx, address, -7, func(reward *helium.Reward, err error) {
+				if err != nil {
+					panic(fmt.Errorf("reward 7d: %s: %w", address, err))
+				}
+				d.rewards[address].Day7 = reward
+				d.hotspotChange(address)
 			})
-		}(row, address)
+		}(address)
 
-		go func(row int, address string) {
-			d.app.QueueUpdateDraw(func() {
-				helium.GetReward(ctx, address, -30, func(reward *helium.Reward, err error) {
-					if err != nil {
-						panic(fmt.Errorf("reward 30d: %s: %w", address, err))
-					}
-					cell := tview.NewTableCell(fmt.Sprintf("%f", reward.Total)).SetTextColor(tcell.ColorWhite).SetAlign(tview.AlignRight)
-					d.table.SetCell(row, columnlast30d, cell)
-				})
+		go func(address string) {
+			helium.GetReward(ctx, address, -30, func(reward *helium.Reward, err error) {
+				if err != nil {
+					panic(fmt.Errorf("reward 30d: %s: %w", address, err))
+				}
+				d.rewards[address].Day30 = reward
+				d.hotspotChange(address)
 			})
-		}(row, address)
+		}(address)
 	}
 
 	return nil
