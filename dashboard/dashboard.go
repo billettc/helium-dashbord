@@ -248,12 +248,31 @@ func (d *Dashboard) hotspotChange(address string) {
 	})
 }
 
+func (d *Dashboard) updateRewards(address string, reward *helium.Reward, days int) {
+	d.lock.Lock()
+	defer d.lock.Unlock()
+
+	rwd := d.rewards[address]
+	switch days {
+	case -1:
+		rwd.Day1 = reward
+	case -7:
+		rwd.Day7 = reward
+	case -30:
+		rwd.Day30 = reward
+	}
+}
+
 func (d *Dashboard) displayError(err error) {
 	d.footer.AddItem(tview.NewTextView().SetText(err.Error()).SetTextAlign(tview.AlignCenter), 0, 1, false)
 }
 
 func (d *Dashboard) loadData(ctx context.Context) error {
 	for _, address := range d.addresses {
+		if _, exists := d.hotspots[address]; exists {
+			continue
+		}
+
 		ctx, cancel := context.WithCancel(ctx)
 
 		d.rewards[address] = &helium.Rewards{
@@ -280,7 +299,7 @@ func (d *Dashboard) loadData(ctx context.Context) error {
 					d.displayError(err)
 					return
 				}
-				d.rewards[address].Day1 = reward
+				d.updateRewards(address, reward, -1)
 				d.hotspotChange(address)
 			})
 		}(address)
@@ -291,7 +310,7 @@ func (d *Dashboard) loadData(ctx context.Context) error {
 					d.displayError(err)
 					return
 				}
-				d.rewards[address].Day7 = reward
+				d.updateRewards(address, reward, -7)
 				d.hotspotChange(address)
 			})
 		}(address)
@@ -302,7 +321,7 @@ func (d *Dashboard) loadData(ctx context.Context) error {
 					d.displayError(err)
 					return
 				}
-				d.rewards[address].Day30 = reward
+				d.updateRewards(address, reward, -30)
 				d.hotspotChange(address)
 			})
 		}(address)
