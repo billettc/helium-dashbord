@@ -24,6 +24,7 @@ type Dashboard struct {
 	addressAtRow map[int]string
 	hotspots     map[string]*helium.Hotspot
 	rewards      map[string]*helium.Rewards
+	pages        *tview.Pages
 }
 
 const (
@@ -47,39 +48,44 @@ func NewDashboard(addresses []string) *Dashboard {
 	dashboard.app = tview.NewApplication()
 
 	flex := tview.NewFlex()
-	pages := tview.NewPages().
+	dashboard.pages = tview.NewPages().
 		AddPage("main", flex, true, true)
 
 	// Create the layout.
-	table := tview.NewTable()
-	dashboard.table = table
+	dashboard.table = buildTable(dashboard)
 
+	header := tview.NewFlex()
+	header.AddItem(buildMenu(dashboard.app), 0, 4, false)
+	header.AddItem(tview.NewTextView().SetText(logo).SetTextAlign(tview.AlignRight), 0, 1, false)
+
+	dashboard.table.SetBorder(true).SetBorderPadding(1, 1, 1, 1)
+	dashboard.footer = tview.NewFlex().SetBorder(false)
+	flex.AddItem(header, 0, 1, false)
+	flex.AddItem(dashboard.table, 0, 4, false).SetBorder(true)
+	flex.AddItem(dashboard.footer, 0, 1, false)
+
+	flex.SetDirection(tview.FlexRow)
+	flex.SetBorder(false)
+
+	dashboard.app.SetRoot(dashboard.pages, true).SetFocus(dashboard.table)
+
+	return dashboard
+}
+
+func modal(p tview.Primitive, width, height int) tview.Primitive {
+	return tview.NewFlex().
+		AddItem(nil, 0, 1, false).
+		AddItem(tview.NewFlex().SetDirection(tview.FlexRow).
+			AddItem(nil, 0, 1, false).
+			AddItem(p, height, 1, false).
+			AddItem(nil, 0, 1, false), width, 1, false).
+		AddItem(nil, 0, 1, false)
+}
+
+func buildTable(dashboard *Dashboard) *tview.Table {
+	table := tview.NewTable()
 	table.SetBorders(false)
 	table.SetSelectable(true, false)
-
-	table.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
-		if row, _ := table.GetSelection(); row < 1 {
-			return event
-		}
-
-		//hotspot := dashboard.hotspots[dashboard]
-		if event.Rune() == 'i' {
-			box := tview.NewBox().
-				SetBorder(true).
-				SetTitle("BOXO")
-
-			box.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
-				if event.Key() == tcell.KeyEsc {
-					pages.RemovePage("modal")
-				}
-				return event
-			})
-
-			dashboard.app.SetFocus(box)
-			pages.AddPage("modal", modal(box, 40, 10), true, true)
-		}
-		return event
-	})
 
 	table.SetCell(0, columnHotpotName, tview.NewTableCell("Hotspot Name").SetTextColor(tcell.ColorYellow).SetAlign(tview.AlignLeft))
 	table.SetCell(0, columnLast24h, tview.NewTableCell("last 24h").SetTextColor(tcell.ColorYellow).SetAlign(tview.AlignRight).SetExpansion(20))
@@ -100,32 +106,33 @@ func NewDashboard(addresses []string) *Dashboard {
 		table.SetSelectable(false, false)
 	})
 
-	header := tview.NewFlex()
-	header.AddItem(buildMenu(dashboard.app), 0, 4, false)
-	header.AddItem(tview.NewTextView().SetText(logo).SetTextAlign(tview.AlignRight), 0, 1, false)
+	table.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
+		row, _ := table.GetSelection()
+		if row < 1 {
+			return event
+		}
 
-	table.SetBorder(true).SetBorderPadding(1, 1, 1, 1)
-	dashboard.footer = tview.NewFlex().SetBorder(false)
-	flex.AddItem(header, 0, 1, false)
-	flex.AddItem(table, 0, 4, false).SetBorder(true)
-	flex.AddItem(dashboard.footer, 0, 1, false)
+		address := dashboard.addressAtRow[row]
+		hotspot := dashboard.hotspots[address]
+		if event.Rune() == 'i' {
 
-	flex.SetDirection(tview.FlexRow)
-	flex.SetBorder(false)
+			detailFlex := tview.NewFlex().
+				SetBorder(true).
+				SetTitle(hotspot.Name)
 
-	dashboard.app.SetRoot(pages, true).SetFocus(table)
+			detailFlex.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
+				if event.Key() == tcell.KeyEsc {
+					dashboard.pages.RemovePage("modal")
+				}
+				return event
+			})
 
-	return dashboard
-}
-
-func modal(p tview.Primitive, width, height int) tview.Primitive {
-	return tview.NewFlex().
-		AddItem(nil, 0, 1, false).
-		AddItem(tview.NewFlex().SetDirection(tview.FlexRow).
-			AddItem(nil, 0, 1, false).
-			AddItem(p, height, 1, false).
-			AddItem(nil, 0, 1, false), width, 1, false).
-		AddItem(nil, 0, 1, false)
+			dashboard.app.SetFocus(detailFlex)
+			dashboard.pages.AddPage("modal", modal(detailFlex, 40, 10), true, true)
+		}
+		return event
+	})
+	return table
 }
 
 func buildMenu(app *tview.Application) *tview.List {
