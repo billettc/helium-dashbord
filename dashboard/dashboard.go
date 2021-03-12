@@ -117,67 +117,89 @@ func buildTable(dashboard *Dashboard) *tview.Table {
 }
 
 func (d *Dashboard) hotspotDetail(hotspot *helium.Hotspot) {
-	detail := tview.NewFlex()
-	detail.SetDirection(tview.FlexRow)
+	//newPrimitive := func(text string) tview.Primitive {
+	//	return tview.NewTextView().
+	//		SetTextAlign(tview.AlignCenter).
+	//		SetText(text)
+	//}
 
-	//detail := tview.NewBox()
+	status := tview.NewFlex().SetDirection(tview.FlexRow).
+		AddItem(labelValue("status", hotspot.Status.Online, 10), 0, 1, false)
+	status.SetBorder(true).SetBorderPadding(0, 0, 1, 1)
 
-	detail.SetBorder(true).SetTitle(" " + hotspot.Name + " ").SetTitleColor(tcell.ColorYellow)
-	detail.SetBorderPadding(1, 1, 1, 1)
-	detail.SetBackgroundColor(tcell.ColorBlack)
+	location := tview.NewFlex().SetDirection(tview.FlexRow).
+		AddItem(tview.NewFlex().SetDirection(tview.FlexColumn).
+			AddItem(labelValue("Lat", fmt.Sprintf("%f", hotspot.Lat), 8), 0, 1, false).
+			AddItem(labelValue("Long", fmt.Sprintf("%f", hotspot.Lng), 8), 0, 1, false), 0, 1, false)
+	location.SetBorder(true).SetBorderPadding(0, 0, 1, 1)
 
-	hack := tview.NewBox()
+	grid := tview.NewGrid().
+		AddItem(status, 1, 0, 1, 1, 0, 0, false).
+		AddItem(location, 1, 1, 1, 1, 0, 0, false)
 
-	hack.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
-		if event.Key() == tcell.KeyEsc {
-			d.pages.RemovePage("modal")
-			d.app.SetFocus(d.table)
-		}
-		return event
-	})
+	grid.SetColumns(0, 0).SetRows(3, 10, 0, 10).
+		AddItem(tview.NewTextView().
+			SetText(hotspot.Name).
+			SetTextColor(tcell.ColorGreen).
+			SetTextAlign(tview.AlignCenter),
+			0, 0, 1, 2, 0, 0, false)
 
-	ownership := tview.NewFlex().
-		AddItem(labelValue("Address", hotspot.Address, 10), 0, 1, false).
-		AddItem(labelValue("Owner", hotspot.Owner, 10), 0, 1, false).
-		SetDirection(tview.FlexColumn)
+		//grid.SetBorder(true)
+	grid.SetBackgroundColor(tcell.ColorBlack)
+	//detail := tview.NewFlex()
+	//detail.SetDirection(tview.FlexRow)
+	//
+	////detail := tview.NewBox()
+	//
+	//detail.SetBorder(true).SetTitle(" " + hotspot.Name + " ").SetTitleColor(tcell.ColorYellow)
+	//detail.SetBorderPadding(1, 1, 1, 1)
+	//detail.SetBackgroundColor(tcell.ColorBlack)
+	//
+	//hack := tview.NewBox()
+	//
+	//hack.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
+	//	if event.Key() == tcell.KeyEsc {
+	//		d.pages.RemovePage("modal")
+	//		d.app.SetFocus(d.table)
+	//	}
+	//	return event
+	//})
+	//
+	//ownership := tview.NewFlex().
+	//	AddItem(labelValue("Address", hotspot.Address, 10), 0, 1, false).
+	//	AddItem(labelValue("Owner", hotspot.Owner, 10), 0, 1, false).
+	//	SetDirection(tview.FlexColumn)
+	//
+	//detail.AddItem(ownership, 0, 1, false)
+	//
+	//
+	////location := tview.NewFlex()
+	////location.SetBorder(true).SetBorderPadding(1, 1, 1, 1)
+	////location.
+	////	AddItem(labelValue("lat", fmt.Sprintf("%f", hotspot.Lat), 5), 0, 1, false).
+	////	AddItem(labelValue("long", fmt.Sprintf("%f", hotspot.Lng), 5), 0, 1, false)
+	//
+	//detail.AddItem(locationBox(hotspot), 15, 0, false)
+	//
+	//detail.AddItem(hack, 0, 1, false)
+	//
+	//d.app.SetFocus(hack)
+	//
 
-	detail.AddItem(ownership, 0, 1, false)
-
-	//location := tview.NewFlex()
-	//location.SetBorder(true).SetBorderPadding(1, 1, 1, 1)
-	//location.
-	//	AddItem(labelValue("lat", fmt.Sprintf("%f", hotspot.Lat), 5), 0, 1, false).
-	//	AddItem(labelValue("long", fmt.Sprintf("%f", hotspot.Lng), 5), 0, 1, false)
-
-	detail.AddItem(locationBox(hotspot), 15, 0, false)
-
-	detail.AddItem(hack, 0, 1, false)
-
-	d.app.SetFocus(hack)
-
-	d.pages.AddPage("modal", detail, true, true)
+	d.pages.AddPage("modal", grid, true, true)
 
 }
 
-func locationBox(hotspot *helium.Hotspot) tview.Primitive {
+func labelValue(label, value string, labelSize int) tview.Primitive {
 	return tview.NewBox().
-		SetBorder(true).
 		SetDrawFunc(func(screen tcell.Screen, x int, y int, width int, height int) (int, int, int, int) {
-			// Draw a horizontal line across the middle of the box.
-			//centerY := y + height/2
-			//for cx := x + 1; cx < x+width-1; cx++ {
-			//	screen.SetContent(cx, centerY, tview.BoxDrawingsLightHorizontal, nil, tcell.StyleDefault.Foreground(tcell.ColorWhite))
-			//}
 
-			// Write some text along the horizontal line.
-			tview.Print(screen, "Lat:", x+1, y+1, width-2, tview.AlignLeft, tcell.ColorYellow)
-			tview.Print(screen, fmt.Sprintf("%f", hotspot.Lat), x+1+5, y+1, width-2, tview.AlignLeft, tcell.ColorWhite)
+			lbl := label + ":"
+			totalLen := labelSize + len(value)
+			tview.Print(screen, lbl, x, y, len(lbl), tview.AlignLeft, tcell.ColorYellow)
+			tview.Print(screen, value, x+labelSize, y, len(value), tview.AlignLeft, tcell.ColorWhite)
 
-			tview.Print(screen, "Log:", x+1, y+2, width-2, tview.AlignLeft, tcell.ColorYellow)
-			tview.Print(screen, fmt.Sprintf("%f", hotspot.Lng), x+1+5, y+2, width-2, tview.AlignLeft, tcell.ColorWhite)
-
-			// Space for other content.
-			return x + 1, y + 1, 15, 5
+			return x, y, totalLen, 1
 		})
 }
 
@@ -191,15 +213,15 @@ func modal(p tview.Primitive, width, height int) tview.Primitive {
 		AddItem(nil, 0, 1, false)
 }
 
-func labelValue(label, value string, labelSize int) tview.Primitive {
-	flex := tview.NewFlex().
-		AddItem(tview.NewTextView().SetText(label+":").SetTextColor(tcell.ColorYellow), labelSize, 0, false).
-		AddItem(tview.NewTextView().SetText(value).SetTextAlign(tview.AlignLeft), 0, 1, false)
-
-	flex.SetDirection(tview.FlexColumn)
-
-	return flex
-}
+//func labelValue(label, value string, labelSize int) tview.Primitive {
+//	flex := tview.NewFlex().
+//		AddItem(tview.NewTextView().SetText(label+":").SetTextColor(tcell.ColorYellow), labelSize, 0, false).
+//		AddItem(tview.NewTextView().SetText(value).SetTextAlign(tview.AlignLeft), 0, 1, false)
+//
+//	flex.SetDirection(tview.FlexColumn)
+//
+//	return flex
+//}
 
 func buildMenu(app *tview.Application) *tview.List {
 	return tview.NewList().
