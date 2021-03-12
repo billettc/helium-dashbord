@@ -3,6 +3,7 @@ package dashboard
 import (
 	"context"
 	"fmt"
+
 	"github.com/billettc/helium-dashbord/helium"
 	"github.com/gdamore/tcell/v2"
 	"github.com/rivo/tview"
@@ -14,7 +15,7 @@ type Dashboard struct {
 	app *tview.Application
 
 	addresses []string
-	table *tview.Table
+	table     *tview.Table
 }
 
 const (
@@ -32,6 +33,11 @@ func NewDashboard(addresses []string) *Dashboard {
 
 	table := tview.NewTable()
 	table.SetBorders(false)
+	table.SetSelectable(true, false)
+
+	//table.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
+	//
+	//})
 
 	table.SetCell(0, columnHotpotName, tview.NewTableCell("Hotspot Name").SetTextColor(tcell.ColorYellow).SetAlign(tview.AlignLeft))
 	table.SetCell(0, columnLast24h, tview.NewTableCell("last 24h").SetTextColor(tcell.ColorYellow).SetAlign(tview.AlignRight).SetExpansion(20))
@@ -64,12 +70,12 @@ func NewDashboard(addresses []string) *Dashboard {
 	flex.SetDirection(tview.FlexRow)
 	flex.SetBorder(false)
 
-	app.SetRoot(flex, true).SetFocus(menu)
+	app.SetRoot(flex, true).SetFocus(table)
 	return &Dashboard{
 		app: app,
 
 		addresses: addresses,
-		table: table,
+		table:     table,
 	}
 }
 
@@ -90,13 +96,16 @@ func (d *Dashboard) Run() error {
 	return d.app.Run()
 }
 
-func  (d *Dashboard) loadData(ctx context.Context) error {
+func (d *Dashboard) loadData(ctx context.Context) error {
 	for i, address := range d.addresses {
 		row := i + 1
 
 		go func(row int, address string) {
 			d.app.QueueUpdateDraw(func() {
 				helium.GetHotspot(ctx, address, func(h *helium.Hotspot, err error) {
+					if err != nil {
+						panic(fmt.Errorf("get hotspot: %w", err))
+					}
 					d.table.SetCell(row, columnHotpotName, tview.NewTableCell(h.Name).SetTextColor(tcell.ColorWhite).SetAlign(tview.AlignLeft))
 					d.table.SetCell(row, columnHotspotAddress, tview.NewTableCell(h.Address).SetTextColor(tcell.ColorWhite).SetAlign(tview.AlignLeft))
 					d.table.SetCell(row, columnHotspotOwner, tview.NewTableCell(h.Owner).SetTextColor(tcell.ColorWhite).SetAlign(tview.AlignLeft))
