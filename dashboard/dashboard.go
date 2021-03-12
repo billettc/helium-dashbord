@@ -36,14 +36,9 @@ const (
 func NewDashboard(addresses []string) *Dashboard {
 	app := tview.NewApplication()
 	// Create the layout.
-
 	table := tview.NewTable()
 	table.SetBorders(false)
 	table.SetSelectable(true, false)
-
-	//table.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
-	//
-	//})
 
 	table.SetCell(0, columnHotpotName, tview.NewTableCell("Hotspot Name").SetTextColor(tcell.ColorYellow).SetAlign(tview.AlignLeft))
 	table.SetCell(0, columnLast24h, tview.NewTableCell("last 24h").SetTextColor(tcell.ColorYellow).SetAlign(tview.AlignRight).SetExpansion(20))
@@ -66,7 +61,7 @@ func NewDashboard(addresses []string) *Dashboard {
 
 	header := tview.NewFlex()
 	header.AddItem(buildMenu(app), 0, 4, false)
-	header.AddItem(tview.NewTextView().SetText(logo), 0, 4, false)
+	header.AddItem(tview.NewTextView().SetText(logo).SetTextAlign(tview.AlignRight), 0, 1, false)
 
 	table.SetBorder(true).SetBorderPadding(1, 1, 1, 1)
 	footer := tview.NewFlex().SetBorder(false)
@@ -108,9 +103,6 @@ func (d *Dashboard) Run() error {
 }
 
 func (d *Dashboard) hotspotChange(address string) {
-	d.lock.Lock()
-	defer d.lock.Unlock()
-
 	hotspot := d.hotspots[address]
 	rewards := d.rewards[address]
 	row := d.rows[address]
