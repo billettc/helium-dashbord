@@ -3,7 +3,6 @@ package dashboard
 import (
 	"context"
 	"fmt"
-
 	"github.com/billettc/helium-dashbord/helium"
 	"github.com/gdamore/tcell/v2"
 	"github.com/rivo/tview"
@@ -13,6 +12,9 @@ var logo = ",--.  ,--.,------.   \n|  '--'  ||  .-.  \\  \n|  .--.  ||  |  \\  :
 
 type Dashboard struct {
 	app *tview.Application
+
+	addresses []string
+	table *tview.Table
 }
 
 const (
@@ -50,16 +52,7 @@ func NewDashboard(addresses []string) *Dashboard {
 		table.SetSelectable(false, false)
 	})
 
-	go func() {
-		if err := loadData(context.TODO(), addresses, table); err != nil {
-			panic(err)
-		}
-	}()
-
-	header := tview.NewFlex()
-	menu := buildMenu(app)
-	header.AddItem(menu, 0, 3, true)
-	header.AddItem(tview.NewTextView().SetText(logo).SetTextAlign(tview.AlignRight), 0, 1, false)
+	header := tview.NewBox().SetTitle("Header").SetBorder(true)
 
 	table.SetBorder(true).SetBorderPadding(1, 1, 1, 1)
 	footer := tview.NewFlex().SetBorder(false)
@@ -74,6 +67,9 @@ func NewDashboard(addresses []string) *Dashboard {
 	app.SetRoot(flex, true).SetFocus(menu)
 	return &Dashboard{
 		app: app,
+
+		addresses: addresses,
+		table: table,
 	}
 }
 
@@ -87,48 +83,60 @@ func buildMenu(app *tview.Application) *tview.List {
 }
 
 func (d *Dashboard) Run() error {
+	err := d.loadData(context.TODO())
+	if err != nil {
+		return err
+	}
 	return d.app.Run()
 }
 
-func loadData(ctx context.Context, addresses []string, table *tview.Table) error {
-	for i, address := range addresses {
+func  (d *Dashboard) loadData(ctx context.Context) error {
+	for i, address := range d.addresses {
 		row := i + 1
 
 		go func(row int, address string) {
-			helium.GetHotspot(ctx, address, func(h *helium.Hotspot, err error) {
-				table.SetCell(row, columnHotpotName, tview.NewTableCell(h.Name).SetTextColor(tcell.ColorWhite).SetAlign(tview.AlignLeft))
-				table.SetCell(row, columnHotspotAddress, tview.NewTableCell(h.Address).SetTextColor(tcell.ColorWhite).SetAlign(tview.AlignLeft))
-				table.SetCell(row, columnHotspotOwner, tview.NewTableCell(h.Owner).SetTextColor(tcell.ColorWhite).SetAlign(tview.AlignLeft))
+			d.app.QueueUpdateDraw(func() {
+				helium.GetHotspot(ctx, address, func(h *helium.Hotspot, err error) {
+					d.table.SetCell(row, columnHotpotName, tview.NewTableCell(h.Name).SetTextColor(tcell.ColorWhite).SetAlign(tview.AlignLeft))
+					d.table.SetCell(row, columnHotspotAddress, tview.NewTableCell(h.Address).SetTextColor(tcell.ColorWhite).SetAlign(tview.AlignLeft))
+					d.table.SetCell(row, columnHotspotOwner, tview.NewTableCell(h.Owner).SetTextColor(tcell.ColorWhite).SetAlign(tview.AlignLeft))
+				})
 			})
 		}(row, address)
 
 		go func(row int, address string) {
-			helium.GetReward(ctx, address, -1, func(reward *helium.Reward, err error) {
-				if err != nil {
-					panic(fmt.Errorf("reward 24h: %s: %w", address, err))
-				}
-				cell := tview.NewTableCell(fmt.Sprintf("%f", reward.Total)).SetTextColor(tcell.ColorWhite).SetAlign(tview.AlignRight)
-				table.SetCell(row, columnLast24h, cell)
+			d.app.QueueUpdate(func() {
+				helium.GetReward(ctx, address, -1, func(reward *helium.Reward, err error) {
+					if err != nil {
+						panic(fmt.Errorf("reward 24h: %s: %w", address, err))
+					}
+					cell := tview.NewTableCell(fmt.Sprintf("%f", reward.Total)).SetTextColor(tcell.ColorWhite).SetAlign(tview.AlignRight)
+					d.table.SetCell(row, columnLast24h, cell)
+				})
 			})
 		}(row, address)
 
 		go func(row int, address string) {
-			helium.GetReward(ctx, address, -7, func(reward *helium.Reward, err error) {
-				if err != nil {
-					panic(fmt.Errorf("reward 7d: %s: %w", address, err))
-				}
-				cell := tview.NewTableCell(fmt.Sprintf("%f", reward.Total)).SetTextColor(tcell.ColorWhite).SetAlign(tview.AlignRight)
-				table.SetCell(row, columnLast7d, cell)
+			d.app.QueueUpdate(func() {
+				helium.GetReward(ctx, address, -7, func(reward *helium.Reward, err error) {
+					if err != nil {
+						panic(fmt.Errorf("reward 7d: %s: %w", address, err))
+					}
+					cell := tview.NewTableCell(fmt.Sprintf("%f", reward.Total)).SetTextColor(tcell.ColorWhite).SetAlign(tview.AlignRight)
+					d.table.SetCell(row, columnLast7d, cell)
+				})
 			})
 		}(row, address)
 
 		go func(row int, address string) {
-			helium.GetReward(ctx, address, -30, func(reward *helium.Reward, err error) {
-				if err != nil {
-					panic(fmt.Errorf("reward 30d: %s: %w", address, err))
-				}
-				cell := tview.NewTableCell(fmt.Sprintf("%f", reward.Total)).SetTextColor(tcell.ColorWhite).SetAlign(tview.AlignRight)
-				table.SetCell(row, columnlast30d, cell)
+			d.app.QueueUpdateDraw(func() {
+				helium.GetReward(ctx, address, -30, func(reward *helium.Reward, err error) {
+					if err != nil {
+						panic(fmt.Errorf("reward 30d: %s: %w", address, err))
+					}
+					cell := tview.NewTableCell(fmt.Sprintf("%f", reward.Total)).SetTextColor(tcell.ColorWhite).SetAlign(tview.AlignRight)
+					d.table.SetCell(row, columnlast30d, cell)
+				})
 			})
 		}(row, address)
 	}
