@@ -16,15 +16,16 @@ var webClient = &http.Client{Timeout: 10 * time.Second}
 func main() {
 
 	app := tview.NewApplication()
-	table := tview.NewTable()
-	table.SetBorders(true)
 
-	table.SetCell(0, 0, tview.NewTableCell("Hotspot Name").SetTextColor(tcell.ColorYellow).SetAlign(tview.AlignCenter))
-	table.SetCell(0, 1, tview.NewTableCell("last 24h").SetTextColor(tcell.ColorYellow).SetAlign(tview.AlignCenter))
-	table.SetCell(0, 2, tview.NewTableCell("last 7 days").SetTextColor(tcell.ColorYellow).SetAlign(tview.AlignCenter))
-	table.SetCell(0, 3, tview.NewTableCell("last 30 days").SetTextColor(tcell.ColorYellow).SetAlign(tview.AlignCenter))
-	table.SetCell(0, 4, tview.NewTableCell("Address").SetTextColor(tcell.ColorYellow).SetAlign(tview.AlignCenter))
-	table.SetCell(0, 5, tview.NewTableCell("Owner").SetTextColor(tcell.ColorYellow).SetAlign(tview.AlignCenter))
+	table := tview.NewTable()
+	table.SetBorders(false)
+
+	table.SetCell(0, 0, tview.NewTableCell("Hotspot Name").SetTextColor(tcell.ColorYellow).SetAlign(tview.AlignLeft))
+	table.SetCell(0, 1, tview.NewTableCell("last 24h").SetTextColor(tcell.ColorYellow).SetAlign(tview.AlignRight).SetExpansion(20))
+	table.SetCell(0, 2, tview.NewTableCell("last 7 days").SetTextColor(tcell.ColorYellow).SetAlign(tview.AlignRight).SetExpansion(20))
+	table.SetCell(0, 3, tview.NewTableCell("last 30 days").SetTextColor(tcell.ColorYellow).SetAlign(tview.AlignRight).SetExpansion(20))
+	table.SetCell(0, 4, tview.NewTableCell("Address").SetTextColor(tcell.ColorYellow).SetAlign(tview.AlignLeft))
+	table.SetCell(0, 5, tview.NewTableCell("Owner").SetTextColor(tcell.ColorYellow).SetAlign(tview.AlignLeft))
 
 	addresses := os.Args[1:]
 
@@ -47,7 +48,7 @@ func main() {
 					panic(err)
 				}
 			})
-			time.Sleep(30 * time.Second)
+			time.Sleep(60 * time.Second)
 		}
 	}()
 
