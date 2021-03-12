@@ -35,10 +35,33 @@ const (
 
 func NewDashboard(addresses []string) *Dashboard {
 	app := tview.NewApplication()
+	flex := tview.NewFlex()
+	pages := tview.NewPages().
+		AddPage("main", flex, true, true)
+
 	// Create the layout.
 	table := tview.NewTable()
 	table.SetBorders(false)
 	table.SetSelectable(true, false)
+
+	table.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
+		if event.Rune() == 'i' {
+			box := tview.NewBox().
+				SetBorder(true).
+				SetTitle("Centered Box")
+
+			box.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
+				if event.Key() == tcell.KeyEsc {
+					pages.RemovePage("modal")
+				}
+				return event
+			})
+
+			app.SetFocus(box)
+			pages.AddPage("modal", modal(box, 40, 10), true, true)
+		}
+		return event
+	})
 
 	table.SetCell(0, columnHotpotName, tview.NewTableCell("Hotspot Name").SetTextColor(tcell.ColorYellow).SetAlign(tview.AlignLeft))
 	table.SetCell(0, columnLast24h, tview.NewTableCell("last 24h").SetTextColor(tcell.ColorYellow).SetAlign(tview.AlignRight).SetExpansion(20))
@@ -65,15 +88,14 @@ func NewDashboard(addresses []string) *Dashboard {
 
 	table.SetBorder(true).SetBorderPadding(1, 1, 1, 1)
 	footer := tview.NewFlex().SetBorder(false)
-	flex := tview.NewFlex()
 	flex.AddItem(header, 0, 1, false)
-	flex.AddItem(table, 0, 3, false).SetBorder(true)
+	flex.AddItem(table, 0, 4, false).SetBorder(true)
 	flex.AddItem(footer, 0, 1, false)
 
 	flex.SetDirection(tview.FlexRow)
 	flex.SetBorder(false)
 
-	app.SetRoot(flex, true).SetFocus(table)
+	app.SetRoot(pages, true).SetFocus(table)
 	return &Dashboard{
 		app: app,
 
@@ -83,6 +105,16 @@ func NewDashboard(addresses []string) *Dashboard {
 		hotspots:  map[string]*helium.Hotspot{},
 		rows:      map[string]int{},
 	}
+}
+
+func modal(p tview.Primitive, width, height int) tview.Primitive {
+	return tview.NewFlex().
+		AddItem(nil, 0, 1, false).
+		AddItem(tview.NewFlex().SetDirection(tview.FlexRow).
+			AddItem(nil, 0, 1, false).
+			AddItem(p, height, 1, false).
+			AddItem(nil, 0, 1, false), width, 1, false).
+		AddItem(nil, 0, 1, false)
 }
 
 func buildMenu(app *tview.Application) *tview.List {
