@@ -113,7 +113,7 @@ func (d *Dashboard) hotspotChange(address string) {
 
 	hotspot := d.hotspots[address]
 	rewards := d.rewards[address]
-	row := d.rows[hotspot.Address]
+	row := d.rows[address]
 	d.app.QueueUpdateDraw(func() {
 		d.table.SetCell(row, columnHotpotName, tview.NewTableCell(hotspot.Name).SetTextColor(tcell.ColorWhite).SetAlign(tview.AlignLeft))
 		d.table.SetCell(row, columnHotspotAddress, tview.NewTableCell(address).SetTextColor(tcell.ColorWhite).SetAlign(tview.AlignLeft))
@@ -127,13 +127,10 @@ func (d *Dashboard) hotspotChange(address string) {
 
 		cell = tview.NewTableCell(fmt.Sprintf("%f", rewards.Day30.Total)).SetTextColor(tcell.ColorWhite).SetAlign(tview.AlignRight)
 		d.table.SetCell(row, columnlast30d, cell)
-
 	})
-
 }
 
 func (d *Dashboard) loadData(ctx context.Context) error {
-
 	for i, address := range d.addresses {
 		d.rows[address] = i + 1
 		d.hotspots[address] = &helium.Hotspot{}
@@ -183,6 +180,5 @@ func (d *Dashboard) loadData(ctx context.Context) error {
 			})
 		}(address)
 	}
-
 	return nil
 }
