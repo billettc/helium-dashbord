@@ -25,6 +25,8 @@ type Dashboard struct {
 	hotspots     map[string]*helium.Hotspot
 	rewards      map[string]*helium.Rewards
 	pages        *tview.Pages
+
+	errors chan error
 }
 
 const (
@@ -43,6 +45,7 @@ func NewDashboard(addresses []string) *Dashboard {
 		rewards:      map[string]*helium.Rewards{},
 		hotspots:     map[string]*helium.Hotspot{},
 		rows:         map[string]int{},
+		errors:       make(chan error),
 	}
 
 	dashboard.app = tview.NewApplication()
@@ -208,7 +211,12 @@ func buildMenu(app *tview.Application) *tview.List {
 }
 
 func (d *Dashboard) Run() error {
-	err := d.loadData(context.TODO())
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	go d.handleErrors(ctx)
+
+	err := d.loadData(ctx)
 	if err != nil {
 		return err
 	}
@@ -263,8 +271,15 @@ func (d *Dashboard) updateRewards(address string, reward *helium.Reward, days in
 	}
 }
 
-func (d *Dashboard) displayError(err error) {
-	d.footer.AddItem(tview.NewTextView().SetText(err.Error()).SetTextAlign(tview.AlignCenter), 0, 1, false)
+func (d *Dashboard) handleErrors(ctx context.Context) {
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		case err := <-d.errors:
+			d.footer.AddItem(tview.NewTextView().SetText(err.Error()).SetTextAlign(tview.AlignCenter), 0, 1, false)
+		}
+	}
 }
 
 func (d *Dashboard) loadData(ctx context.Context) error {
@@ -284,8 +299,8 @@ func (d *Dashboard) loadData(ctx context.Context) error {
 		go func(address string) {
 			helium.GetHotspot(ctx, address, func(h *helium.Hotspot, err error) {
 				if err != nil {
-					d.displayError(err)
 					cancel()
+					d.errors <- err
 					return
 				}
 				d.hotspots[address] = h
@@ -296,7 +311,8 @@ func (d *Dashboard) loadData(ctx context.Context) error {
 		go func(address string) {
 			helium.GetReward(ctx, address, -1, func(reward *helium.Reward, err error) {
 				if err != nil {
-					d.displayError(err)
+					cancel()
+					d.errors <- err
 					return
 				}
 				d.updateRewards(address, reward, -1)
@@ -307,7 +323,8 @@ func (d *Dashboard) loadData(ctx context.Context) error {
 		go func(address string) {
 			helium.GetReward(ctx, address, -7, func(reward *helium.Reward, err error) {
 				if err != nil {
-					d.displayError(err)
+					cancel()
+					d.errors <- err
 					return
 				}
 				d.updateRewards(address, reward, -7)
@@ -318,7 +335,8 @@ func (d *Dashboard) loadData(ctx context.Context) error {
 		go func(address string) {
 			helium.GetReward(ctx, address, -30, func(reward *helium.Reward, err error) {
 				if err != nil {
-					d.displayError(err)
+					cancel()
+					d.errors <- err
 					return
 				}
 				d.updateRewards(address, reward, -30)
