@@ -4,11 +4,20 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"net"
 	"net/http"
 	"time"
 )
 
-var httpClient = &http.Client{Timeout: 10 * time.Second}
+var httpClient = &http.Client{
+	Timeout: 10 * time.Second,
+	Transport: &http.Transport{
+		DialContext: (&net.Dialer{
+			Timeout:       5*time.Second,
+		}).DialContext,
+		TLSHandshakeTimeout: 5*time.Second,
+	},
+}
 
 func GetReward(ctx context.Context, address string, days int, callback func(*Reward, error)) {
 	ticker := time.NewTicker(1 * time.Minute)
