@@ -34,6 +34,7 @@ const (
 	columnLast24h
 	columnLast7d
 	columnlast30d
+	columnlast365d
 	columnHotspotAddress
 	columnHotspotOwner
 )
@@ -85,8 +86,9 @@ func buildTable(dashboard *Dashboard) *tview.Table {
 	table.SetCell(0, columnLast24h, tview.NewTableCell("last 24h").SetTextColor(tcell.ColorYellow).SetAlign(tview.AlignRight).SetExpansion(20))
 	table.SetCell(0, columnLast7d, tview.NewTableCell("last 7 days").SetTextColor(tcell.ColorYellow).SetAlign(tview.AlignRight).SetExpansion(20))
 	table.SetCell(0, columnlast30d, tview.NewTableCell("last 30 days").SetTextColor(tcell.ColorYellow).SetAlign(tview.AlignRight).SetExpansion(20))
-	table.SetCell(0, columnHotspotAddress, tview.NewTableCell("Address").SetTextColor(tcell.ColorYellow).SetAlign(tview.AlignLeft))
-	table.SetCell(0, columnHotspotOwner, tview.NewTableCell("Owner").SetTextColor(tcell.ColorYellow).SetAlign(tview.AlignLeft))
+	table.SetCell(0, columnlast365d, tview.NewTableCell("last year").SetTextColor(tcell.ColorYellow).SetAlign(tview.AlignRight).SetExpansion(20))
+	//table.SetCell(0, columnHotspotAddress, tview.NewTableCell("Address").SetTextColor(tcell.ColorYellow).SetAlign(tview.AlignLeft))
+	//table.SetCell(0, columnHotspotOwner, tview.NewTableCell("Owner").SetTextColor(tcell.ColorYellow).SetAlign(tview.AlignLeft))
 
 	table.Select(0, 0).SetFixed(1, 1).SetDoneFunc(func(key tcell.Key) {
 		if key == tcell.KeyEscape {
@@ -117,12 +119,6 @@ func buildTable(dashboard *Dashboard) *tview.Table {
 }
 
 func (d *Dashboard) hotspotDetail(hotspot *helium.Hotspot) {
-	//newPrimitive := func(text string) tview.Primitive {
-	//	return tview.NewTextView().
-	//		SetTextAlign(tview.AlignCenter).
-	//		SetText(text)
-	//}
-
 	status := tview.NewFlex().SetDirection(tview.FlexRow).
 		AddItem(labelValue("status", hotspot.Status.Online, 10), 0, 1, false)
 	status.SetBorder(true).SetBorderPadding(0, 0, 1, 1)
@@ -146,45 +142,6 @@ func (d *Dashboard) hotspotDetail(hotspot *helium.Hotspot) {
 
 		//grid.SetBorder(true)
 	grid.SetBackgroundColor(tcell.ColorBlack)
-	//detail := tview.NewFlex()
-	//detail.SetDirection(tview.FlexRow)
-	//
-	////detail := tview.NewBox()
-	//
-	//detail.SetBorder(true).SetTitle(" " + hotspot.Name + " ").SetTitleColor(tcell.ColorYellow)
-	//detail.SetBorderPadding(1, 1, 1, 1)
-	//detail.SetBackgroundColor(tcell.ColorBlack)
-	//
-	//hack := tview.NewBox()
-	//
-	//hack.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
-	//	if event.Key() == tcell.KeyEsc {
-	//		d.pages.RemovePage("modal")
-	//		d.app.SetFocus(d.table)
-	//	}
-	//	return event
-	//})
-	//
-	//ownership := tview.NewFlex().
-	//	AddItem(labelValue("Address", hotspot.Address, 10), 0, 1, false).
-	//	AddItem(labelValue("Owner", hotspot.Owner, 10), 0, 1, false).
-	//	SetDirection(tview.FlexColumn)
-	//
-	//detail.AddItem(ownership, 0, 1, false)
-	//
-	//
-	////location := tview.NewFlex()
-	////location.SetBorder(true).SetBorderPadding(1, 1, 1, 1)
-	////location.
-	////	AddItem(labelValue("lat", fmt.Sprintf("%f", hotspot.Lat), 5), 0, 1, false).
-	////	AddItem(labelValue("long", fmt.Sprintf("%f", hotspot.Lng), 5), 0, 1, false)
-	//
-	//detail.AddItem(locationBox(hotspot), 15, 0, false)
-	//
-	//detail.AddItem(hack, 0, 1, false)
-	//
-	//d.app.SetFocus(hack)
-	//
 
 	d.pages.AddPage("modal", grid, true, true)
 
@@ -212,16 +169,6 @@ func modal(p tview.Primitive, width, height int) tview.Primitive {
 			AddItem(nil, 0, 1, false), width, 1, false).
 		AddItem(nil, 0, 1, false)
 }
-
-//func labelValue(label, value string, labelSize int) tview.Primitive {
-//	flex := tview.NewFlex().
-//		AddItem(tview.NewTextView().SetText(label+":").SetTextColor(tcell.ColorYellow), labelSize, 0, false).
-//		AddItem(tview.NewTextView().SetText(value).SetTextAlign(tview.AlignLeft), 0, 1, false)
-//
-//	flex.SetDirection(tview.FlexColumn)
-//
-//	return flex
-//}
 
 func buildMenu(app *tview.Application) *tview.List {
 	return tview.NewList().
@@ -264,8 +211,8 @@ func (d *Dashboard) hotspotChange(address string) {
 
 	d.app.QueueUpdateDraw(func() {
 		d.table.SetCell(row, columnHotpotName, tview.NewTableCell(hotspot.Name).SetTextColor(tcell.ColorWhite).SetAlign(tview.AlignLeft))
-		d.table.SetCell(row, columnHotspotAddress, tview.NewTableCell(address).SetTextColor(tcell.ColorWhite).SetAlign(tview.AlignLeft))
-		d.table.SetCell(row, columnHotspotOwner, tview.NewTableCell(hotspot.Owner).SetTextColor(tcell.ColorWhite).SetAlign(tview.AlignLeft))
+		//d.table.SetCell(row, columnHotspotAddress, tview.NewTableCell(address).SetTextColor(tcell.ColorWhite).SetAlign(tview.AlignLeft))
+		//d.table.SetCell(row, columnHotspotOwner, tview.NewTableCell(hotspot.Owner).SetTextColor(tcell.ColorWhite).SetAlign(tview.AlignLeft))
 
 		cell := tview.NewTableCell(fmt.Sprintf("%f", rewards.Day1.Total)).SetTextColor(tcell.ColorWhite).SetAlign(tview.AlignRight)
 		d.table.SetCell(row, columnLast24h, cell)
@@ -275,6 +222,10 @@ func (d *Dashboard) hotspotChange(address string) {
 
 		cell = tview.NewTableCell(fmt.Sprintf("%f", rewards.Day30.Total)).SetTextColor(tcell.ColorWhite).SetAlign(tview.AlignRight)
 		d.table.SetCell(row, columnlast30d, cell)
+		cell = tview.NewTableCell(fmt.Sprintf("%f", rewards.Day30.Total)).SetTextColor(tcell.ColorWhite).SetAlign(tview.AlignRight)
+		d.table.SetCell(row, columnlast30d, cell)
+		cell = tview.NewTableCell(fmt.Sprintf("%f", rewards.Day365.Total)).SetTextColor(tcell.ColorWhite).SetAlign(tview.AlignRight)
+		d.table.SetCell(row, columnlast365d, cell)
 	})
 }
 
@@ -290,6 +241,8 @@ func (d *Dashboard) updateRewards(address string, reward *helium.Reward, days in
 		rwd.Day7 = reward
 	case -30:
 		rwd.Day30 = reward
+	case -365:
+		rwd.Day365 = reward
 	}
 }
 
@@ -313,9 +266,10 @@ func (d *Dashboard) loadData(ctx context.Context) error {
 		ctx, cancel := context.WithCancel(ctx)
 
 		d.rewards[address] = &helium.Rewards{
-			Day1:  &helium.Reward{},
-			Day7:  &helium.Reward{},
-			Day30: &helium.Reward{},
+			Day1:   &helium.Reward{},
+			Day7:   &helium.Reward{},
+			Day30:  &helium.Reward{},
+			Day365: &helium.Reward{},
 		}
 
 		go func(address string) {
@@ -325,7 +279,9 @@ func (d *Dashboard) loadData(ctx context.Context) error {
 					d.errors <- err
 					return
 				}
+				d.lock.Lock()
 				d.hotspots[address] = h
+				d.lock.Unlock()
 				d.hotspotChange(address)
 			})
 		}(address)
@@ -362,6 +318,18 @@ func (d *Dashboard) loadData(ctx context.Context) error {
 					return
 				}
 				d.updateRewards(address, reward, -30)
+				d.hotspotChange(address)
+			})
+		}(address)
+
+		go func(address string) {
+			helium.GetReward(ctx, address, -365, func(reward *helium.Reward, err error) {
+				if err != nil {
+					cancel()
+					d.errors <- err
+					return
+				}
+				d.updateRewards(address, reward, -365)
 				d.hotspotChange(address)
 			})
 		}(address)

@@ -39,9 +39,10 @@ type Hotspot struct {
 }
 
 type Rewards struct {
-	Day1  *Reward
-	Day7  *Reward
-	Day30 *Reward
+	Day1   *Reward
+	Day7   *Reward
+	Day30  *Reward
+	Day365 *Reward
 }
 
 type RewardResponse struct {

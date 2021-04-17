@@ -13,9 +13,9 @@ var httpClient = &http.Client{
 	Timeout: 10 * time.Second,
 	Transport: &http.Transport{
 		DialContext: (&net.Dialer{
-			Timeout:       5*time.Second,
+			Timeout: 5 * time.Second,
 		}).DialContext,
-		TLSHandshakeTimeout: 5*time.Second,
+		TLSHandshakeTimeout: 5 * time.Second,
 	},
 }
 
@@ -38,6 +38,10 @@ func GetReward(ctx context.Context, address string, days int, callback func(*Rew
 		var response *RewardResponse
 		err := getJson(url, &response)
 
+		if err != nil {
+			callback(nil, err)
+			return
+		}
 		callback(response.Reward, err)
 	}
 }
